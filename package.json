@@ -1,0 +1,19 @@
+{
+  "name": "threejs1",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "author": "Kenny",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "lil-gui": "^0.16.1",
+    "three": "0.140.0",
+    "vite": "^2.9.8"
+  }
+}
