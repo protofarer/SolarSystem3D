@@ -2,6 +2,7 @@ import GUI from 'lil-gui'
 import * as THREE from 'three'
 import WebGL from '../ref/WebGL.js'
 import AxisGridHelper from './lib/AxisGridHelper.js'
+import MinMaxGUIHelper from './lib/MinMaxGUIHelper.js'
 
 if (WebGL.isWebGLAvailable()) {
   // init function or other inits here
@@ -17,14 +18,28 @@ function main() {
   const renderer = new THREE.WebGLRenderer({ canvas })
   const gui = new GUI()
 
-  const fov = 75
-  const aspect = 2
-  const near = 0.1
-  const far = 200
-  const camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-  camera.position.set(0, 50, 0)     // position
+  const initCamProps = {
+    fov: 75,
+    aspect: 2,
+    near: 0.1,
+    far: 200,
+    position: {
+      height: 50
+    }
+  }
+
+  let camera = new THREE.PerspectiveCamera(
+    initCamProps.fov, 
+    initCamProps.aspect, 
+    initCamProps.near, 
+    initCamProps.far
+  )
+  camera.position.set(0, initCamProps.position.height, 0)     // position
   camera.up.set(0, 0, 1)      // orient camera's up to be +Z
   camera.lookAt(0, 0, 0)      // face
+  
+  setupCameraControllers(camera, gui)
+  
 
   const scene = new THREE.Scene()
 
@@ -57,14 +72,18 @@ function main() {
   const light = new THREE.PointLight(color, intensity)
   scene.add(light)
 
-  // MERCURY ORBIT
+  // MERCURY
+  const mercuryRoot = new THREE.Object3D()
+  mercuryRoot.name = 'mercuryRoot'
+  scene.add(mercuryRoot)
+  objects.push(mercuryRoot)
+
   const mercuryOrbit = new THREE.Object3D()
   mercuryOrbit.position.x = 10
   mercuryOrbit.name = 'mercuryOrbit'
-  solarSystem.add(mercuryOrbit)
+  mercuryRoot.add(mercuryOrbit)
   objects.push(mercuryOrbit)
 
-  // MERCURY
   const mercuryMaterial = new THREE.MeshPhongMaterial({
     color: 'red',
     emissive: 'red'
@@ -75,14 +94,18 @@ function main() {
   mercuryOrbit.add(mercuryMesh)
   objects.push(mercuryMesh)
   
-  // EARTH ORBIT
+  // EARTH
+  const earthRoot = new THREE.Object3D()
+  earthRoot.name = 'earthRoot'
+  scene.add(earthRoot)
+  objects.push(earthRoot)
+
   const earthOrbit = new THREE.Object3D()
   earthOrbit.position.x = 30
   earthOrbit.name = 'earthOrbit'
-  solarSystem.add(earthOrbit)
+  earthRoot.add(earthOrbit)
   objects.push(earthOrbit)
 
-  // EARTH
   const earthMaterial = new THREE.MeshPhongMaterial({
     color: 0x2233FF, 
     emissive: 0x112244 
@@ -92,11 +115,16 @@ function main() {
   earthOrbit.add(earthMesh)
   objects.push(earthMesh)
 
-  // MOON ORBIT
+  // MOON
+  const moonRoot = new THREE.Object3D()
+  moonRoot.name = 'moonRoot'
+  earthOrbit.add(moonRoot)
+  objects.push(moonRoot)
+
   const moonOrbit = new THREE.Object3D()
   moonOrbit.position.x = 2
   moonOrbit.name = 'moonOrbit'
-  earthOrbit.add(moonOrbit)
+  moonRoot.add(moonOrbit)
 
   // MOON
   const moonMaterial = new THREE.MeshPhongMaterial({
@@ -109,18 +137,7 @@ function main() {
   moonOrbit.add(moonMesh)
   objects.push(moonMesh)
 
-  function makeAxisGrid(node, label, units) {
-    const helper = new AxisGridHelper(node, units)
-    gui.add(helper, 'visible').name(label)
-  }
-
-  objects.forEach(o => {
-    if (o.name === 'solarSystem') {
-      makeAxisGrid(o, o.name, 25)
-    } else {
-      makeAxisGrid(o, o.name)
-    }
-  })
+  setupHelpers(objects, gui)
 
   function render(time) {
     // requestAnimationFrame passes time in ms, convert to sec
@@ -134,14 +151,27 @@ function main() {
     }
 
     objects.forEach(o => {
+      // Set bodies' orbit tangent speed
       switch (o.name) {
-        case 'sunRoot':
+        case 'solarSystem':
+          // o.rotation.y = 0;
+          break
+        case 'sunMesh':
           o.rotation.y = time * 0.1
+          break
+        case 'mercuryRoot':
+          o.rotation.y = time * (365 / 88)
+          break
+        case 'earthRoot':
+          o.rotation.y = time;
+          break
+        case 'moonRoot':
+          o.rotation.y = time * (365 / 27.5);    // set to moon sidereal period
           break
         default:
           break
       }
-      o.rotation.y = time
+      // o.rotation.y = time
 
       // // Add an AxesHelper to each node
       // const axes = new THREE.AxesHelper()
@@ -168,4 +198,45 @@ function main() {
     }
     return needResize
   }
+}
+
+function setupCameraControllers(camera, gui) {
+  function updateCamera() {
+    camera.updateProjectionMatrix()
+    console.log(`camera`, camera)
+  }
+  gui.add(camera, 'fov', 1, 180).onChange(updateCamera)
+  // add controller for camera.up
+  const minMaxGUIHelper = new MinMaxGUIHelper(camera, 'near', 'far', 10)
+  gui.add(minMaxGUIHelper, 'min', 0.1, 50, 1).name('near').onChange(updateCamera)
+  gui.add(minMaxGUIHelper, 'max', 30, 100, 1).name('far').onChange(updateCamera)
+}
+function setupHelpers(objects, gui) {
+  const helpers = []
+
+  function makeAxisGrid(node, label, units) {
+    const helper = new AxisGridHelper(node, units)
+    gui.add(helper, 'visible').name(label)
+    return helper;
+  }
+
+  objects.forEach(o => {
+    switch (o.name) {
+      case 'solarSystem':
+        helpers.push(makeAxisGrid(o, o.name, 25))
+        break
+      default:
+        helpers.push(makeAxisGrid(o, o.name))
+        break
+    }
+  })
+
+  // toggle all helpers' visibility
+  gui.add({ 
+    toggleViz() {
+      helpers.forEach(h => h.visible = !h.visible)
+      gui.controllers.forEach(c => c.updateDisplay())
+    }
+  }, 'toggleViz').name('toggle all helpers')
+
 }
