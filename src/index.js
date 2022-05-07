@@ -86,7 +86,8 @@ function main() {
 
   const mercuryMaterial = new THREE.MeshPhongMaterial({
     color: 'red',
-    emissive: 'red'
+    emissive: 'red',
+    shininess: 5,
   })
   const mercuryMesh = new THREE.Mesh(sphereGeometry, mercuryMaterial)
   mercuryMesh.name = 'mercuryMesh'
@@ -108,7 +109,8 @@ function main() {
 
   const earthMaterial = new THREE.MeshPhongMaterial({
     color: 0x2233FF, 
-    emissive: 0x112244 
+    emissive: 0x112244,
+    shininess: 5,
   })
   const earthMesh = new THREE.Mesh(sphereGeometry, earthMaterial)
   earthMesh.name = 'earthMesh'
@@ -139,9 +141,12 @@ function main() {
 
   setupHelpers(objects, gui)
 
+  const timeProps = { multiplier: 1 }
+  gui.add(timeProps, 'multiplier', 0.01, 2, 0.01)
   function render(time) {
     // requestAnimationFrame passes time in ms, convert to sec
     time *= 0.001
+    time *= timeProps.multiplier
 
     // render with a resolution that matches the display size of the canvas.
     if (resizeRendererToDisplaySize(renderer)) {
@@ -237,6 +242,6 @@ function setupHelpers(objects, gui) {
       helpers.forEach(h => h.visible = !h.visible)
       gui.controllers.forEach(c => c.updateDisplay())
     }
-  }, 'toggleViz').name('toggle all helpers')
+  }, 'toggleViz').name('toggle all visibility')
 
 }
